@@ -1,46 +1,58 @@
-![IronHack Logo](https://s3-eu-west-1.amazonaws.com/ih-materials/uploads/upload_d5c5793015fec3be28a63c4fa3dd4d55.png)
+Data Extraction and Cleaning with Pandas Project
 
-# Project: API and Web Data Scraping
+For this proyect I will scrape a stocks information page to extract all Tickers from public companies available. I will then use an API to gather 6 months of stock price history and the industry sector for each company. Whit this information I'm looking to get a list of companies with historic stock performance that I can later use. Throughout the proyect I will be saving data onto CVSs to avoid re-running the API calls and re-scraping the website.
 
-## Overview
+Approach
 
-The goal of this project is for you to practice what you have learned in the APIs and Web Scraping chapter of this program. For this project, you will choose both an API to obtain data from and a web page to scrape. For the API portion of the project will need to make calls to your chosen API, successfully obtain a response, request data, convert it into a Pandas data frame, and export it as a CSV file. For the web scraping portion of the project, you will need to scrape the HTML from your chosen page, parse the HTML to extract the necessary information, and either save the results to a text (txt) file if it is text or into a CSV file if it is tabular data.
+1. Scraping https://companiesmarketcap.com/ for information about public companies.
 
-**You will be working individually for this project**, but we'll be guiding you along the process and helping you as you go. Show us what you've got!
+I will be using selenium as data needs to load prior to being able to extract it. Using requests on its own will not work.
 
----
+Given the structure of the website, infomation about companies is represented in 58 differente pages, thus I will use an array to accumulate a dataframe for each page and then concatenate all into one.
 
-## Technical Requirements
+After concatenating all dataframes I will do some cleaning to obtain relevant data. The original "Name" column actually contains both the name of the company and it's "Ticker" or ("Symbol"). I will need these to be on two different columns so I can actually use the symbol on my API requests. Additionally, I will need to do some cleaning on the "Market Cap" and "Price" columns so I can convert these columns into numbers (float).
 
-The technical requirements for this project are as follows:
+On the "Market Cap" column I notice there is a letter representing the magnitude of the number. I will also need to extract this so I can later have a "Market Cap" Column with an absolute number (not abbreviated).
 
-* You must obtain data from an API using Python.
-* You must scrape and clean HTML from a web page using Python.
-* The results should be two files - one containing the tabular results of your API request and the other containing the results of your web page scrape.
-* Your code should be saved in a Jupyter Notebook and your results should be saved in a folder named output.
-* You should include a README.md file that describes the steps you took and your thought process for obtaining data from the API and web page.
+After cleaning, creating new columuns, and dropping unnecesary columns. I save this as a CSV (./output/stocks.csv)
 
-## Necessary Deliverables
+2. Complementing information with API.
 
-The following deliverables should be pushed to your Github repo for this chapter.
+I will take all symbols or Tickers from the scraped data and feed these into an API so I can get historic stock price data.
 
-* **A Jupyter Notebook (.ipynb) file** that contains the code used to work with your API and scrape your web page.
-* **An output folder** containing the outputs of your API and scraping efforts.
-* **A ``README.md`` file** containing a detailed explanation of your approach and code for retrieving data from the API and scraping the web page as well as your results, obstacles encountered, and lessons learned.
+The API I will be using is: yahoofinanceapi.com
 
-## Suggested Ways to Get Started
+For the API calls I will be using "time" to ensure I do not exceed the 300 calls/minute threshold and will be using try and except in case a symbol is not included in the API.
 
-* **Find an API to work with** - a great place to start looking would be [API List](https://apilist.fun/) and [Public APIs](https://github.com/toddmotto/public-apis). If you need authorization for your chosen API, make sure to give yourself enough time for the service to review and accept your application. Have a couple back-up APIs chosen just in case!
-* **Find a web page to scrape** and determine the content you would like to scrape from it - blogs and news sites are typically good candidates for scraping text content, and [Wikipedia](https://www.wikipedia.org/) is usually a good source for HTML tables (search for "list of...").
-* **Break the project down into different steps** - note the steps covered in the API and web scraping lessons, try to follow them, and make adjustments as you encounter the obstacles that are inevitable due to all APIs and web pages being different.
-* **Use the tools in your tool kit** - your knowledge of intermediate Python as well as some of the things you've learned in previous chapters. This is a great way to start tying everything you've learned together!
-* **Work through the lessons in class** & ask questions when you need to! Think about adding relevant code to your project each night, instead of, you know... _procrastinating_.
-* **Commit early, commit often**, don’t be afraid of doing something incorrectly because you can always roll back to a previous version.
-* **Consult documentation and resources provided** to better understand the tools you are using and how to accomplish what you want.
+After my API calls are done and I have saved the information in a csv. I proceed to merge both files (1. the scraped data and 2. The data extracted from the API)
 
-## Useful Resources
+output file: ./output/merged.csv
 
-* [Requests Library Documentation: Quickstart](http://docs.python-requests.org/en/master/user/quickstart/)
-* [BeautifulSoup Documentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
-* [Stack Overflow Python Requests Questions](https://stackoverflow.com/questions/tagged/python-requests)
-* [StackOverflow BeautifulSoup Questions](https://stackoverflow.com/questions/tagged/beautifulsoup)
+Looking at the data, It's becoming a bit complicated to get anything meaningfull on the historic prices. Actually what I want to know is what stocks are the big winners, and big loosers. Eventually understand any correlations between these... i.e. is there a stock that when its a big winner other stock is a big looser?
+
+As a starting point I want to understand both absolute and % increase/decrease of stock price in the last 6 months. Note: API data includes 6 months history.
+To do this I will use melt to pivot date columns into a single column. This will allow me to more easily perform analyses on stock prices.
+
+After melting I will sort to make sure information is displayed with date ascending.
+
+3. Applying functions to data so we can get the 6-month-gain (absolute and percent) and a function that can get the gain between any two differente months.
+
+After applying formulas and given they do take a while to run, I save the updated dataframe in a new file.
+
+output file: ./output/merged_with_formulas.csv
+
+5. Extracting sector data from API. While individual stock analyses is valuable, sometimes whole industries are affected or might be correlated, thus I want to add the industry sector for each stock.
+
+output file: ./output/sectors.csv
+
+I then merge the new sector data onto our merged dataframe and save it to a file.
+
+output file: ./output/full_integration.csv
+
+6. Up until this point it seems we have a pretty comprehensive data base of publick stock, nonetheless it still needs some transformations... Transformations (qcut + dummies)
+
+I perform a qcut of 5 bins and rename these as big loss, loss, neutral, win, big win and create a column (6mo Veredict)
+
+I take both 6mo Veredict and Sectors and convert these into dummy variables.
+
+Final output: ./output/final_extract.csv
